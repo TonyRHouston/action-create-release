@@ -8,6 +8,7 @@ describe('Create Release', () => {
   let createRelease;
   let GitHub;
   let listMatchingRefs;
+  let paginate;
   let run;
 
   function mockValues(previousTags = []) {
@@ -23,9 +24,8 @@ describe('Create Release', () => {
       }
     });
 
-    listMatchingRefs = jest.fn().mockReturnValueOnce({
-      data: previousTags
-    });
+    listMatchingRefs = jest.fn();
+    paginate = jest.fn().mockResolvedValue(previousTags);
 
     context.repo = {
       owner: 'owner',
@@ -33,6 +33,7 @@ describe('Create Release', () => {
     };
 
     const octokit = {
+      paginate,
       repos: {
         createRelease
       },
@@ -201,6 +202,28 @@ describe('Create Release', () => {
     expect(core.setOutput).toHaveBeenNthCalledWith(4, 'upload_url', 'uploadUrl');
   });
 
+  test('Existing tags are fetched with pagination', async () => {
+    jest.resetModules();
+    mockValues([{ ref: 'v1.0.0' }]);
+    core.getInput = jest
+      .fn()
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('continuous')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('myRelease')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('false');
+
+    await run();
+
+    expect(paginate).toHaveBeenCalledWith(listMatchingRefs, {
+      owner: 'owner',
+      repo: 'repo',
+      ref: 'tags',
+      per_page: 100
+    });
+  });
+
   test('Action fails elegantly', async () => {
     core.getInput = jest
       .fn()
@@ -270,6 +293,33 @@ describe('Create Release', () => {
       owner: 'owner',
       repo: 'repo',
       tag_name: 'v2',
+      name: 'myRelease',
+      body: '',
+      draft: false,
+      prerelease: false,
+      target_commitish: 'sha-value'
+    });
+  });
+
+  test('Auto increment uses highest semantic tag', async () => {
+    jest.resetModules();
+    mockValues([{ ref: 'v2.0.0' }, { ref: 'v10.0.0' }, { ref: 'v3.0.0' }]);
+    core.getInput = jest
+      .fn()
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('continuous')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('myRelease')
+      .mockReturnValueOnce('') // <-- The default value for body in action.yml
+      .mockReturnValueOnce('false');
+
+    await run();
+
+    expect(createRelease).toHaveBeenCalledWith({
+      owner: 'owner',
+      repo: 'repo',
+      tag_name: 'v11',
       name: 'myRelease',
       body: '',
       draft: false,

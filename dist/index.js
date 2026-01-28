@@ -11602,6 +11602,15 @@ function initialTag(tag) {
 }
 
 async function existingTags() {
+  if (octokit.paginate) {
+    const refs = await octokit.paginate(octokit.git.listMatchingRefs, {
+      owner,
+      repo,
+      ref: 'tags',
+      per_page: 100
+    });
+    return refs.reverse();
+  }
   const { data: refs } = await octokit.git.listMatchingRefs({
     owner,
     repo,
@@ -11683,7 +11692,16 @@ async function computeLastTag() {
   if (recentTags.length < 1) {
     return null;
   }
-  return recentTags.shift().ref.replace('refs/tags/', '');
+  const tagNames = recentTags.map(tag => tag.ref.replace('refs/tags/', ''));
+  const parsedTags = tagNames.map(tag => ({ tag, semver: semanticVersion(tag) }));
+  const validTags = parsedTags.filter(item => item.semver);
+
+  if (validTags.length < 1) {
+    return tagNames[0];
+  }
+
+  validTags.sort((a, b) => semver.rcompare(a.semver, b.semver));
+  return validTags[0].tag;
 }
 
 async function computeNextTag(scheme) {
