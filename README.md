@@ -120,5 +120,8 @@ This will create a [Release](https://help.github.com/en/articles/creating-releas
 ## Contributing
 We would love you to contribute to `@zendesk/action-create-release`, pull requests are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
+## Package roadmap
+We keep a lightweight package research and implementation plan to track dependency upgrades and tooling improvements. See [docs/package-plan.md](docs/package-plan.md) for details.
+
 ## License
 The scripts and documentation in this project are released under the [MIT License](LICENSE)
